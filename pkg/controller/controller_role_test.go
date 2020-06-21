@@ -6,25 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jenkins-x/jx/v2/pkg/cmd/controller"
-	"github.com/jenkins-x/jx/v2/pkg/cmd/testhelpers"
-
-	"github.com/jenkins-x/jx/v2/pkg/log"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/kubernetes"
-
-	v1 "github.com/jenkins-x/jx/v2/pkg/apis/jenkins.io/v1"
-	"github.com/jenkins-x/jx/v2/pkg/cmd/opts"
-	"github.com/jenkins-x/jx/v2/pkg/gits"
-	"github.com/jenkins-x/jx/v2/pkg/helm"
-	"github.com/jenkins-x/jx/v2/pkg/kube"
-	resources_test "github.com/jenkins-x/jx/v2/pkg/kube/resources/mocks"
-	"github.com/jenkins-x/jx/v2/pkg/tests"
-	"github.com/jenkins-x/jx/v2/pkg/util"
-	"github.com/stretchr/testify/assert"
-	rbacv1 "k8s.io/api/rbac/v1"
+	v1 "github.com/jenkins-x/jx-api/pkg/apis/jenkins.io/v1"
+	"github.com/jenkins-x/jx-logging/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 )
 
 func TestEnvironmentRoleBinding(t *testing.T) {

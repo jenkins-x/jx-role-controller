@@ -1,6 +1,6 @@
 // +build unit
 
-package errorutil
+package util
 
 import (
 	"fmt"
