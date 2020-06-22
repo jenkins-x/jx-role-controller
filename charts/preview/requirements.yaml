@@ -1,0 +1,4 @@
+dependencies:
+- alias: preview
+  name: jx-role-controller
+  repository: file://../jx-role-controller
