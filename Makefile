@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+NAME := jx-role-controller
 GO := GO111MODULE=on GO15VENDOREXPERIMENT=1 go
 GO_NOMOD := GO111MODULE=off go
 GOTEST := $(GO) test
@@ -40,3 +41,9 @@ coverage:
 .PHONY: cover
 cover:
 	$(GO) tool cover -func coverage.out | grep total
+
+linux:
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(NAME)-linux-amd64 main.go
+
+docker: linux
+	docker build -t jenkins-x/$(NAME) .
