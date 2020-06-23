@@ -22,7 +22,8 @@ func EnvironmentMatches(env *v1.Environment, filter *v1.EnvironmentFilter) bool 
 // the given environment
 func EnvironmentMatchesAny(env *v1.Environment, filters []v1.EnvironmentFilter) bool {
 	for _, filter := range filters {
-		if EnvironmentMatches(env, &filter) {
+		tempFilter := filter
+		if EnvironmentMatches(env, &tempFilter) {
 			return true
 		}
 	}

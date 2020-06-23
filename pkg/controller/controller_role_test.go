@@ -1,10 +1,16 @@
-// +build unit
-
 package controller_test
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/jenkins-x/jx-role-controller/pkg/controller"
+	"github.com/jenkins-x/jx-role-controller/pkg/kube"
+	"github.com/jenkins-x/jx-role-controller/pkg/testhelpers"
+	"github.com/jenkins-x/jx-role-controller/pkg/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	v1 "github.com/jenkins-x/jx-api/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-logging/pkg/log"
@@ -13,12 +19,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func TestEnvironmentRoleBinding(t *testing.T) {
+func Test_EnvironmentRoleBinding(t *testing.T) {
 	t.Parallel()
-	o := &controller.ControllerRoleOptions{
-		ControllerOptions: controller.ControllerOptions{
-			CommonOptions: &opts.CommonOptions{},
-		},
+	o := &controller.RoleOptions{
 		NoWatch: true,
 	}
 	roleName := "myrole"
@@ -83,7 +86,7 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 		},
 	}
 
-	testhelpers.ConfigureTestOptionsWithResources(o.CommonOptions,
+	testhelpers.ConfigureTestOptionsWithResources(o,
 		[]runtime.Object{
 			role,
 			roleWithLabel,
@@ -95,10 +98,6 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 			kube.NewPreviewEnvironment(teamNs + "-jstrachan-another-pr-3"),
 			envRoleBinding,
 		},
-		gits.NewGitCLI(),
-		nil,
-		helm.NewHelmCLI("helm", helm.V2, "", true),
-		resources_test.NewMockInstaller(),
 	)
 
 	err := o.Run()
@@ -106,13 +105,8 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 
 	nsNames := []string{teamNs, teamNs + "-staging", teamNs + "-production", teamNs + "-preview-jx-jstrachan-demo96-pr-1", teamNs + "-preview-jx-jstrachan-another-pr-3"}
 
-	kubeClient, err := o.KubeClient()
-	require.NoError(t, err)
-	jxClient, _, err := o.JXClient()
-	require.NoError(t, err)
-
 	for _, ns := range nsNames {
-		roleBinding, err := kubeClient.RbacV1().RoleBindings(ns).Get(roleBindingName, metav1.GetOptions{})
+		roleBinding, err := o.KubeClient.RbacV1().RoleBindings(ns).Get(roleBindingName, metav1.GetOptions{})
 		assert.NoError(t, err, "Failed to find RoleBinding in namespace %s for name %s", ns, roleBindingName)
 
 		if roleBinding != nil && err == nil {
@@ -120,7 +114,7 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 				"RoleBinding.RoleRef for name %s in namespace %s", roleBindingName, ns)
 		}
 
-		r, err := kubeClient.RbacV1().Roles(ns).Get(roleName, metav1.GetOptions{})
+		r, err := o.KubeClient.RbacV1().Roles(ns).Get(roleName, metav1.GetOptions{})
 		assert.NoError(t, err, "Failed to find Role in namespace %s for name %s", ns, roleName)
 
 		if r != nil && err == nil {
@@ -128,22 +122,19 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 				"Role.Rules for name %s in namespace %s", roleBindingName, ns)
 		}
 		if util.StringMatchesPattern(ns, teamNs) {
-			jxClient, ns, err := o.JXClient()
-			if err == nil {
-				envRoleBindings, err := jxClient.JenkinsV1().EnvironmentRoleBindings(ns).Get(roleName, metav1.GetOptions{})
-				if err != nil {
-					assert.NotNil(t, envRoleBindings, "No EnvironmentRoleBinding called %s in namespace %s", roleName, ns)
-				}
+			envRoleBindings, err := o.JxClient.JenkinsV1().EnvironmentRoleBindings(ns).Get(roleName, metav1.GetOptions{})
+			if err != nil {
+				assert.NotNil(t, envRoleBindings, "No EnvironmentRoleBinding called %s in namespace %s", roleName, ns)
 			}
 		}
 	}
 
-	if tests.IsDebugLog() {
-		namespaces, err := kubeClient.CoreV1().Namespaces().List(metav1.ListOptions{})
+	if testhelpers.IsDebugLog() {
+		namespaces, err := o.KubeClient.CoreV1().Namespaces().List(metav1.ListOptions{})
 		assert.NoError(t, err)
 		if err == nil {
 			for _, ns := range namespaces.Items {
-				tests.Debugf("Has namespace %s\n", ns.Name)
+				testhelpers.Debugf("Has namespace %s\n", ns.Name)
 			}
 		}
 	}
@@ -151,7 +142,7 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 	// now lets add new user to the EnvironmentRoleBinding
 	newUserKind := "ServiceAccount"
 	newUser := "cheese"
-	envRoleBinding, err = jxClient.JenkinsV1().EnvironmentRoleBindings(teamNs).Get(roleBindingName, metav1.GetOptions{})
+	envRoleBinding, err = o.JxClient.JenkinsV1().EnvironmentRoleBindings(teamNs).Get(roleBindingName, metav1.GetOptions{})
 	require.NoError(t, err, "Loading EnvironmentRoleBinding in ns %s with name %s", teamNs, roleBindingName)
 	envRoleBinding.Spec.Subjects = append(envRoleBinding.Spec.Subjects, rbacv1.Subject{
 		Kind:      "ServiceAccount",
@@ -159,56 +150,56 @@ func TestEnvironmentRoleBinding(t *testing.T) {
 		Namespace: teamNs,
 	})
 
-	envRoleBinding, err = jxClient.JenkinsV1().EnvironmentRoleBindings(teamNs).PatchUpdate(envRoleBinding)
+	envRoleBinding, err = o.JxClient.JenkinsV1().EnvironmentRoleBindings(teamNs).PatchUpdate(envRoleBinding)
 	require.NoError(t, err, "Updating EnvironmentRoleBinding in ns %s with name %s", teamNs, roleBindingName)
 
 	// now lets simulate the watch...
 	err = o.UpsertEnvironmentRoleBinding(envRoleBinding)
 	require.NoError(t, err, "Failed to respond to updated EnvironmentRoleBinding in ns %s with name %s", teamNs, roleBindingName)
 
-	AssertRoleBindingsInEnvironmentsContainsSubject(t, kubeClient, nsNames, roleBindingName, newUserKind, teamNs, newUser)
+	AssertRoleBindingsInEnvironmentsContainsSubject(t, o.KubeClient, nsNames, roleBindingName, newUserKind, teamNs, newUser)
 
 	message := fmt.Sprintf("For EnvironmentRoleBinding in namespace %s for name %s", teamNs, roleBindingName)
 
 	// lets add a new preview environment
 	newEnv := kube.NewPreviewEnvironment(teamNs + "-jstrachan-newthingy-pr-1")
 	newPreviewNS := newEnv.Spec.Namespace
-	_, err = jxClient.JenkinsV1().Environments(teamNs).Create(newEnv)
+	_, err = o.JxClient.JenkinsV1().Environments(teamNs).Create(newEnv)
 	require.NoError(t, err, "Failed to create an Environment %s in ns %s", newPreviewNS, teamNs)
 
 	log.Logger().Infof("Created Preview Environment %s", newPreviewNS)
 
 	// now lets simulate the watch...
-	err = o.UpsertEnvironmentRoleBinding(envRoleBinding)
+	_ = o.UpsertEnvironmentRoleBinding(envRoleBinding)
 
 	nsNames = append(nsNames, newPreviewNS)
-	AssertRoleBindingsInEnvironmentsContainsSubject(t, kubeClient, nsNames, roleBindingName, newUserKind, teamNs, newUser)
+	AssertRoleBindingsInEnvironmentsContainsSubject(t, o.KubeClient, nsNames, roleBindingName, newUserKind, teamNs, newUser)
 
 	// now lets remove the user...
 	envRoleBinding.Spec.Subjects = AssertRemoveSubject(t, envRoleBinding.Spec.Subjects, message, newUserKind, teamNs, newUser)
-	envRoleBinding, err = jxClient.JenkinsV1().EnvironmentRoleBindings(teamNs).PatchUpdate(envRoleBinding)
+	envRoleBinding, err = o.JxClient.JenkinsV1().EnvironmentRoleBindings(teamNs).PatchUpdate(envRoleBinding)
 	require.NoError(t, err, "Updating EnvironmentRoleBinding in ns %s with name %s", teamNs, roleBindingName)
 
 	// now lets simulate the watch...
-	err = o.UpsertEnvironmentRoleBinding(envRoleBinding)
+	_ = o.UpsertEnvironmentRoleBinding(envRoleBinding)
 
-	AssertRoleBindingsInEnvironmentsNotContainsSubject(t, kubeClient, nsNames, roleBindingName, newUserKind, teamNs, newUser)
+	AssertRoleBindingsInEnvironmentsNotContainsSubject(t, o.KubeClient, nsNames, roleBindingName, newUserKind, teamNs, newUser)
 
 	// lets assert that roles get updated in all the namespaces
-	AssertRolesInEnvironmentsNotContainsPolicyRule(t, kubeClient, nsNames, roleName, "", "get", "secrets")
-	role, err = kubeClient.RbacV1().Roles(teamNs).Get(roleName, metav1.GetOptions{})
+	AssertRolesInEnvironmentsNotContainsPolicyRule(t, o.KubeClient, nsNames, roleName, "", "get", "secrets")
+	role, err = o.KubeClient.RbacV1().Roles(teamNs).Get(roleName, metav1.GetOptions{})
 	require.NoError(t, err, "Failed to get Role in ns %s with name %s", teamNs, roleName)
 
 	lastIdx := len(role.Rules) - 1
 	role.Rules[lastIdx].Resources = append(role.Rules[lastIdx].Resources, "secrets")
 	log.Logger().Infof("Updated Role %s to be policies %#v", roleName, role.Rules)
-	_, err = kubeClient.RbacV1().Roles(teamNs).Update(role)
+	_, err = o.KubeClient.RbacV1().Roles(teamNs).Update(role)
 	require.NoError(t, err, "Updating EnvironmentRoleBinding in ns %s with name %s", teamNs, roleBindingName)
 
 	// now lets simulate the watch...
-	err = o.UpsertRole(role)
+	_ = o.UpsertRole(role)
 
-	AssertRolesInEnvironmentsContainsPolicyRule(t, kubeClient, nsNames, roleName, "", "get", "secrets")
+	AssertRolesInEnvironmentsContainsPolicyRule(t, o.KubeClient, nsNames, roleName, "", "get", "secrets")
 }
 
 // AssertRemoveSubject removes the subject from the slice of subjects for the given kind, ns, name or fails the test

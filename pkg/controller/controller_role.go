@@ -27,8 +27,8 @@ import (
 
 // RoleOptions the command line options
 type RoleOptions struct {
-	jxClient   versioned.Interface
-	kubeClient kubernetes.Interface
+	JxClient   versioned.Interface
+	KubeClient kubernetes.Interface
 	kubeConfig *rest.Config
 	NoWatch    bool
 	TeamNs     string
@@ -55,14 +55,14 @@ func NewRoleController() (*RoleOptions, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	jxClient, err := versioned.NewForConfig(kubeConfig)
+	JxClient, err := versioned.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	roleController := &RoleOptions{
-		jxClient:   jxClient,
-		kubeClient: kubeClient,
+		JxClient:   JxClient,
+		KubeClient: kubeClient,
 		kubeConfig: kubeConfig,
 		TeamNs:     namespace,
 	}
@@ -91,17 +91,18 @@ func (o *RoleOptions) Run() error {
 		}
 	}
 
-	roles, err := o.kubeClient.RbacV1().Roles(o.TeamNs).List(metav1.ListOptions{})
+	roles, err := o.KubeClient.RbacV1().Roles(o.TeamNs).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, role := range roles.Items {
-		err = o.UpsertRole(&role)
+		tempRole := role
+		err = o.UpsertRole(&tempRole)
 		if err != nil {
 			return errors.Wrap(err, "upserting role")
 		}
 	}
-	bindings, err := o.jxClient.JenkinsV1().EnvironmentRoleBindings(o.TeamNs).List(metav1.ListOptions{})
+	bindings, err := o.JxClient.JenkinsV1().EnvironmentRoleBindings(o.TeamNs).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -111,12 +112,13 @@ func (o *RoleOptions) Run() error {
 			return errors.Wrap(err, "upsert environment role binding resource")
 		}
 	}
-	envList, err := o.jxClient.JenkinsV1().Environments(o.TeamNs).List(metav1.ListOptions{})
+	envList, err := o.JxClient.JenkinsV1().Environments(o.TeamNs).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, env := range envList.Items {
-		err = o.upsertEnvironment(&env)
+		tempEnv := env
+		err = o.upsertEnvironment(&tempEnv)
 		if err != nil {
 			return err
 		}
@@ -127,7 +129,7 @@ func (o *RoleOptions) Run() error {
 
 func (o *RoleOptions) WatchRoles() error {
 	role := &rbacv1.Role{}
-	listWatch := cache.NewListWatchFromClient(o.kubeClient.RbacV1().RESTClient(), "roles", o.TeamNs, fields.Everything())
+	listWatch := cache.NewListWatchFromClient(o.KubeClient.RbacV1().RESTClient(), "roles", o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
 		listWatch,
@@ -153,7 +155,7 @@ func (o *RoleOptions) WatchRoles() error {
 
 func (o *RoleOptions) WatchEnvironmentRoleBindings() error {
 	environmentRoleBinding := &v1.EnvironmentRoleBinding{}
-	listWatch := cache.NewListWatchFromClient(o.jxClient.JenkinsV1().RESTClient(), "environmentrolebindings", o.TeamNs, fields.Everything())
+	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), "environmentrolebindings", o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
 		listWatch,
@@ -179,7 +181,7 @@ func (o *RoleOptions) WatchEnvironmentRoleBindings() error {
 
 func (o *RoleOptions) WatchEnvironments() error {
 	environment := &v1.Environment{}
-	listWatch := cache.NewListWatchFromClient(o.jxClient.JenkinsV1().RESTClient(), "environments", o.TeamNs, fields.Everything())
+	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), "environments", o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
 		listWatch,
@@ -252,7 +254,7 @@ func (o *RoleOptions) upsertEnvironmentRoleBindingRolesInEnvironments(env *v1.En
 			if role == nil {
 				log.Logger().Warnf("Cannot find role %s in namespace %s", roleName, o.TeamNs)
 			} else {
-				roles := o.kubeClient.RbacV1().Roles(ns)
+				roles := o.KubeClient.RbacV1().Roles(ns)
 				var oldRole *rbacv1.Role
 				oldRole, err = roles.Get(roleName, metav1.GetOptions{})
 				if err == nil && oldRole != nil {
@@ -288,7 +290,7 @@ func (o *RoleOptions) upsertEnvironmentRoleBindingRolesInEnvironments(env *v1.En
 		}
 
 		bindingName := binding.Name
-		roleBindings := o.kubeClient.RbacV1().RoleBindings(ns)
+		roleBindings := o.KubeClient.RbacV1().RoleBindings(ns)
 		var old *rbacv1.RoleBinding
 		old, err = roleBindings.Get(bindingName, metav1.GetOptions{})
 		if err == nil && old != nil {
@@ -335,7 +337,7 @@ func (o *RoleOptions) removeEnvironment(env *v1.Environment) {
 	if ns != "" {
 		for _, binding := range o.EnvRoleBindings {
 			if kube.EnvironmentMatchesAny(env, binding.Spec.Environments) {
-				err := o.kubeClient.RbacV1().RoleBindings(ns).Delete(binding.Name, nil)
+				err := o.KubeClient.RbacV1().RoleBindings(ns).Delete(binding.Name, nil)
 				if err != nil {
 					log.Logger().Errorf("error deleting role binding from env: %s", binding.Name)
 				}
@@ -374,14 +376,15 @@ func (o *RoleOptions) UpsertEnvironmentRoleBinding(newEnv *v1.EnvironmentRoleBin
 	}
 
 	// now lets update any roles in any environment we may need to change
-	envList, err := o.jxClient.JenkinsV1().Environments(o.TeamNs).List(metav1.ListOptions{})
+	envList, err := o.JxClient.JenkinsV1().Environments(o.TeamNs).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
 	var errorMap []error
 	for _, env := range envList.Items {
-		err = o.upsertEnvironmentRoleBindingRolesInEnvironments(&env, newEnv, env.Spec.Namespace)
+		tempEnv := env
+		err = o.upsertEnvironmentRoleBindingRolesInEnvironments(&tempEnv, newEnv, env.Spec.Namespace)
 		if err != nil {
 			errorMap = append(errorMap, err)
 		}
@@ -424,7 +427,7 @@ func (o *RoleOptions) UpsertRole(newRole *rbacv1.Role) error {
 	}
 
 	// now lets update any roles in any environment we may need to change
-	envList, err := o.jxClient.JenkinsV1().Environments(o.TeamNs).List(metav1.ListOptions{})
+	envList, err := o.JxClient.JenkinsV1().Environments(o.TeamNs).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -446,7 +449,7 @@ func (o *RoleOptions) upsertRoleInEnvironments(role *rbacv1.Role, ns string) err
 	}
 	var err error
 	roleName := role.Name
-	roles := o.kubeClient.RbacV1().Roles(ns)
+	roles := o.KubeClient.RbacV1().Roles(ns)
 	var oldRole *rbacv1.Role
 	oldRole, err = roles.Get(roleName, metav1.GetOptions{})
 	if err == nil && oldRole != nil {
@@ -506,7 +509,7 @@ func (o *RoleOptions) upsertRoleIntoEnvRole() {
 							},
 						},
 					}
-					_, err := o.jxClient.JenkinsV1().EnvironmentRoleBindings(o.TeamNs).Create(newEnvRoleBinding)
+					_, err := o.JxClient.JenkinsV1().EnvironmentRoleBindings(o.TeamNs).Create(newEnvRoleBinding)
 					if err != nil {
 						log.Logger().Errorf("when upserting role into environment role: %s, with error: %s", newEnvRoleBinding.Name, err)
 					}
