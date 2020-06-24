@@ -3,7 +3,7 @@ package util
 import "strings"
 
 // StringMatchesAny returns true if the given text matches the includes/excludes lists
-func StringMatchesAny(text string, includes []string, excludes []string) bool {
+func StringMatchesAny(text string, includes, excludes []string) bool {
 	for _, x := range excludes {
 		if StringMatchesPattern(text, x) {
 			return false
@@ -21,7 +21,7 @@ func StringMatchesAny(text string, includes []string, excludes []string) bool {
 }
 
 // StringMatchesPattern returns true if the given text matches the includes/excludes lists
-func StringMatchesPattern(text string, pattern string) bool {
+func StringMatchesPattern(text, pattern string) bool {
 	if pattern == "*" {
 		return true
 	}

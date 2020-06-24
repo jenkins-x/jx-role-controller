@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/jenkins-x/jx-logging/pkg/log"
 	"github.com/jenkins-x/jx-role-controller/pkg/controller"
 	"github.com/jenkins-x/jx-role-controller/pkg/loghelpers"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -11,10 +11,10 @@ func main() {
 
 	roleController, err := controller.NewRoleController()
 	if err != nil {
-		logrus.Fatalf(err.Error())
+		log.Logger().Fatalf(err.Error())
 	}
 	err = roleController.Run()
 	if err != nil {
-		logrus.Fatalf(err.Error())
+		log.Logger().Fatalf(err.Error())
 	}
 }

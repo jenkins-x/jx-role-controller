@@ -203,7 +203,7 @@ func Test_EnvironmentRoleBinding(t *testing.T) {
 }
 
 // AssertRemoveSubject removes the subject from the slice of subjects for the given kind, ns, name or fails the test
-func AssertRemoveSubject(t *testing.T, subjects []rbacv1.Subject, message string, kind string, ns string, name string) []rbacv1.Subject {
+func AssertRemoveSubject(t *testing.T, subjects []rbacv1.Subject, message, kind, ns, name string) []rbacv1.Subject {
 	idx := -1
 	for i, subject := range subjects {
 		if subject.Kind == kind && subject.Namespace == ns && subject.Name == name {
@@ -219,7 +219,7 @@ func AssertRemoveSubject(t *testing.T, subjects []rbacv1.Subject, message string
 }
 
 // AssertRoleBindingsInEnvironmentsContainsSubject asserts that all the environments contain a role binding of the given name which contains the given subject
-func AssertRoleBindingsInEnvironmentsContainsSubject(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleBindingName string, kind string, teamNs string, newUser string) {
+func AssertRoleBindingsInEnvironmentsContainsSubject(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleBindingName, kind, teamNs, newUser string) {
 	for _, ns := range nsNames {
 		roleBinding, err := kubeClient.RbacV1().RoleBindings(ns).Get(roleBindingName, metav1.GetOptions{})
 		require.NoError(t, err, "Failed to find RoleBinding in namespace %s for name %s", ns, roleBindingName)
@@ -231,7 +231,7 @@ func AssertRoleBindingsInEnvironmentsContainsSubject(t *testing.T, kubeClient ku
 }
 
 // AssertRoleBindingsInEnvironmentsNotContainsSubject asserts that all the environments do not contain a role binding of the given name which contains the given subject
-func AssertRoleBindingsInEnvironmentsNotContainsSubject(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleBindingName string, kind string, teamNs string, newUser string) {
+func AssertRoleBindingsInEnvironmentsNotContainsSubject(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleBindingName, kind, teamNs, newUser string) {
 	for _, ns := range nsNames {
 		roleBinding, err := kubeClient.RbacV1().RoleBindings(ns).Get(roleBindingName, metav1.GetOptions{})
 		require.NoError(t, err, "Failed to find RoleBinding in namespace %s for name %s", ns, roleBindingName)
@@ -243,7 +243,7 @@ func AssertRoleBindingsInEnvironmentsNotContainsSubject(t *testing.T, kubeClient
 }
 
 // AssertContainsSubject asserts that the given array of subjects contains the given kind, namespace and name subject
-func AssertContainsSubject(t *testing.T, subjects []rbacv1.Subject, message string, kind string, ns string, name string) bool {
+func AssertContainsSubject(t *testing.T, subjects []rbacv1.Subject, message, kind, ns, name string) bool {
 	for _, subject := range subjects {
 		if subject.Kind == kind && subject.Namespace == ns && subject.Name == name {
 			return true
@@ -254,7 +254,7 @@ func AssertContainsSubject(t *testing.T, subjects []rbacv1.Subject, message stri
 }
 
 // AssertNotContainsSubject asserts that the given array of subjects contains the given kind, namespace and name subject
-func AssertNotContainsSubject(t *testing.T, subjects []rbacv1.Subject, message string, kind string, ns string, name string) bool {
+func AssertNotContainsSubject(t *testing.T, subjects []rbacv1.Subject, message, kind, ns, name string) bool {
 	for _, subject := range subjects {
 		if subject.Kind == kind && subject.Namespace == ns && subject.Name == name {
 			log.Logger().Warnf("Should not contain Subject (%s,%s,%s) for %s - has subjects %#v", kind, ns, name, message, subjects)
@@ -265,7 +265,7 @@ func AssertNotContainsSubject(t *testing.T, subjects []rbacv1.Subject, message s
 }
 
 // AssertRolesInEnvironmentsContainsPolicyRule asserts that all the environments contain a Role of the given name which contains the given policy rule
-func AssertRolesInEnvironmentsContainsPolicyRule(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleName string, apiGroup string, verb string, resource string) {
+func AssertRolesInEnvironmentsContainsPolicyRule(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleName, apiGroup, verb, resource string) {
 	for _, ns := range nsNames {
 		role, err := kubeClient.RbacV1().Roles(ns).Get(roleName, metav1.GetOptions{})
 		require.NoError(t, err, "Failed to find Role in namespace %s for name %s", ns, roleName)
@@ -277,7 +277,7 @@ func AssertRolesInEnvironmentsContainsPolicyRule(t *testing.T, kubeClient kubern
 }
 
 // AssertRolesInEnvironmentsNotContainsPolicyRule asserts that all the environments do not contain a Role of the given name which contains the given policy rule
-func AssertRolesInEnvironmentsNotContainsPolicyRule(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleName string, apiGroup string, verb string, resource string) {
+func AssertRolesInEnvironmentsNotContainsPolicyRule(t *testing.T, kubeClient kubernetes.Interface, nsNames []string, roleName, apiGroup, verb, resource string) {
 	for _, ns := range nsNames {
 		role, err := kubeClient.RbacV1().Roles(ns).Get(roleName, metav1.GetOptions{})
 		require.NoError(t, err, "Failed to find RoleBinding in namespace %s for name %s", ns, roleName)
@@ -289,7 +289,7 @@ func AssertRolesInEnvironmentsNotContainsPolicyRule(t *testing.T, kubeClient kub
 }
 
 // AssertContainsPolicyRule asserts that the given array of policy rules contains the given apiGroup, verb and resource subject
-func AssertContainsPolicyRule(t *testing.T, rules []rbacv1.PolicyRule, message string, apiGroup string, verb string, resource string) bool {
+func AssertContainsPolicyRule(t *testing.T, rules []rbacv1.PolicyRule, message, apiGroup, verb, resource string) bool {
 	for _, rule := range rules {
 		if util.StringArrayIndex(rule.APIGroups, apiGroup) >= 0 && util.StringArrayIndex(rule.Verbs, verb) >= 0 && util.StringArrayIndex(rule.Resources, resource) >= 0 {
 			return true
@@ -300,7 +300,7 @@ func AssertContainsPolicyRule(t *testing.T, rules []rbacv1.PolicyRule, message s
 }
 
 // AssertNotContainsPolicyRule asserts that the given array of policy rules contains the given apiGroup, verb and resource subject
-func AssertNotContainsPolicyRule(t *testing.T, rules []rbacv1.PolicyRule, message string, apiGroup string, verb string, resource string) bool {
+func AssertNotContainsPolicyRule(t *testing.T, rules []rbacv1.PolicyRule, message, apiGroup, verb, resource string) bool {
 	for _, rule := range rules {
 		if util.StringArrayIndex(rule.APIGroups, apiGroup) >= 0 && util.StringArrayIndex(rule.Verbs, verb) >= 0 && util.StringArrayIndex(rule.Resources, resource) >= 0 {
 			log.Logger().Warnf("Should not contain PolicyRule (%s,%s,%s) for %s - has rules %#v", apiGroup, verb, resource, message, rules)

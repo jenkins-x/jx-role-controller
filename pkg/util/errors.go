@@ -142,10 +142,8 @@ func Flatten(agg Aggregate) Aggregate {
 			if r != nil {
 				result = append(result, r.Errors()...)
 			}
-		} else {
-			if err != nil {
-				result = append(result, err)
-			}
+		} else if err != nil {
+			result = append(result, err)
 		}
 	}
 	return NewAggregate(result)

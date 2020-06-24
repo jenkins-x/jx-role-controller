@@ -18,7 +18,7 @@ import (
 
 // IsDebugLog debug log?
 func IsDebugLog() bool {
-	return strings.ToLower(os.Getenv("JX_TEST_DEBUG")) == "true"
+	return strings.EqualFold(os.Getenv("JX_TEST_DEBUG"), "true")
 }
 
 // Debugf debug format
@@ -30,7 +30,7 @@ func Debugf(message string, args ...interface{}) {
 
 // ConfigureTestOptions lets configure the options for use in tests
 // using fake APIs to k8s cluster.
-func ConfigureTestOptionsWithResources(o *controller.RoleOptions, k8sObjects []runtime.Object, jxObjects []runtime.Object) {
+func ConfigureTestOptionsWithResources(o *controller.RoleOptions, k8sObjects, jxObjects []runtime.Object) {
 	currentNamespace := "jx"
 	o.TeamNs = currentNamespace
 

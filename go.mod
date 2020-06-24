@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/fatih/color v1.9.0
+	github.com/gophercloud/gophercloud v0.1.0
 	github.com/jenkins-x/jx-api v0.0.10
 	github.com/jenkins-x/jx-kube-client v0.0.7
 	github.com/jenkins-x/jx-logging v0.0.8
