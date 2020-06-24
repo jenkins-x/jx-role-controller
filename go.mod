@@ -4,14 +4,15 @@ go 1.13
 
 require (
 	github.com/fatih/color v1.9.0
-	github.com/jenkins-x/jx-api v0.0.6
+	github.com/jenkins-x/jx-api v0.0.10
 	github.com/jenkins-x/jx-kube-client v0.0.7
 	github.com/jenkins-x/jx-logging v0.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
+	github.com/stretchr/testify v1.6.1
 	k8s.io/api v0.18.4
 	k8s.io/apimachinery v0.18.4
-	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 )
 
 replace k8s.io/api => k8s.io/api v0.16.5
