@@ -1,0 +1,11 @@
+preview:
+  image:
+    imagerepository:
+    imagetag: <VERSION>
+    pullPolicy: IfNotPresent
+  env:
+    JX_CONTROLLER_NO_WATCH: "true"
+  serviceaccount:
+    enabled: false
+  role:
+    enabled: false

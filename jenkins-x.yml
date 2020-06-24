@@ -50,6 +50,13 @@ pipelineConfig:
               - --cache=true
               - --cache-dir=/workspace
 
+          - name: make-preview
+            image: gcr.io/jenkinsxio/builder-go
+            command: make
+            args:
+              - preview
+            dir: /workspace/source/charts/preview
+
     release:
       pipeline:
         agent:
@@ -103,3 +110,43 @@ pipelineConfig:
           - name: changelog
             image: gcr.io/jenkinsxio/builder-go
             command: ./changelog.sh
+
+          - image: gcr.io/jenkinsxio/builder-go
+            name: build-chart
+            command: make
+            args:
+              - build
+            dir: /workspace/source/charts/jx-role-controller
+
+          - image: gcr.io/jenkinsxio/builder-jx
+            dir: /workspace/source/charts/jx-role-controller
+            command: jx
+            name: release-chart
+            args:
+              - step
+              - helm
+              - release
+
+          - image: gcr.io/jenkinsxio/builder-jx
+            dir: /workspace/source/charts/jx-role-controller
+            command: jx
+            name: wait-for-artifact
+            args:
+              - step
+              - wait
+              - for
+              - artifact
+              - --artifact-url
+              - https://storage.googleapis.com/chartmuseum.jenkins-x.io/charts/jx-role-controller-$VERSION.tgz
+
+          - image: gcr.io/jenkinsxio/builder-jx
+            dir: /workspace/source/charts/jx-role-controller
+            command: jx
+            name: wait-for-chart
+            args:
+              - step
+              - wait-for-chart
+              - --chart-name
+              - "jx-role-controller"
+              - --chart-version
+              - "$VERSION"

@@ -1,0 +1,38 @@
+env:
+  JX_CONTROLLER_NO_WATCH: "false"
+
+image:
+  imagerepository: gcr.io/jenkinsxio/jx-role-controller
+  imagetag: <VERSION>
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+serviceaccount:
+  enabled: true
+role:
+  enabled: true
+  rules:
+  - apiGroups:
+    - rbac.authorization.k8s.io
+    - jenkins.io
+    resources:
+    - "role"
+    - "rolebinding"
+    - "environments"
+    - "environmentrolebindings"
+    verbs:
+    - list
+    - get
+    - watch
+    - create
+    - update
+    - patch
+    - delete
