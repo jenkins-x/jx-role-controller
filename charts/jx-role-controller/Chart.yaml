@@ -1,10 +1,11 @@
 apiVersion: v1
-name: jx-role-controller
+appVersion: 0.0.2
 description: A Helm chart for Jenkins X jx-role-controller
 icon: https://avatars2.githubusercontent.com/u/34566050?s=280&v=4
 maintainers:
-- name: Jenkins X Team
-  email: jenkins-x@googlegroups.com
+- email: jenkins-x@googlegroups.com
+  name: Jenkins X Team
+name: jx-role-controller
 sources:
 - https://github.com/jenkins-x/jx-role-controller
-version: 0.1.0
+version: 0.0.2
