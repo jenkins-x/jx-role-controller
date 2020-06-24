@@ -127,6 +127,7 @@ func (o *RoleOptions) Run() error {
 	return nil
 }
 
+//nolint:dupl
 func (o *RoleOptions) WatchRoles() error {
 	role := &rbacv1.Role{}
 	listWatch := cache.NewListWatchFromClient(o.KubeClient.RbacV1().RESTClient(), "roles", o.TeamNs, fields.Everything())
@@ -153,6 +154,7 @@ func (o *RoleOptions) WatchRoles() error {
 	return nil
 }
 
+//nolint:dupl
 func (o *RoleOptions) WatchEnvironmentRoleBindings() error {
 	environmentRoleBinding := &v1.EnvironmentRoleBinding{}
 	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), "environmentrolebindings", o.TeamNs, fields.Everything())
@@ -243,6 +245,7 @@ func (o *RoleOptions) upsertEnvironment(env *v1.Environment) error {
 	return util.CombineErrors(errorMap...)
 }
 
+//nolint:dupl
 // upsertEnvironmentRoleBindingRolesInEnvironments for the given environment and environment role binding lets update any role or role bindings if required
 func (o *RoleOptions) upsertEnvironmentRoleBindingRolesInEnvironments(env *v1.Environment, binding *v1.EnvironmentRoleBinding, ns string) error {
 	var errorMap []error
@@ -442,6 +445,7 @@ func (o *RoleOptions) UpsertRole(newRole *rbacv1.Role) error {
 	return util.CombineErrors(errorMap...)
 }
 
+//nolint:dupl
 // upsertRoleInEnvironments updates the Role in the team environment in the other environment namespaces if it has changed
 func (o *RoleOptions) upsertRoleInEnvironments(role *rbacv1.Role, ns string) error {
 	if ns == o.TeamNs {
