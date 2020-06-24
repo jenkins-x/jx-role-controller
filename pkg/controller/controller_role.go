@@ -67,7 +67,7 @@ func NewRoleController() (*RoleOptions, error) {
 		TeamNs:     namespace,
 	}
 
-	if "" != os.Getenv(watchEnvVar) {
+	if os.Getenv(watchEnvVar) != "" {
 		roleController.NoWatch = util.EnvVarBoolean(os.Getenv(watchEnvVar))
 	}
 
@@ -91,13 +91,12 @@ func (o *RoleOptions) Run() error {
 		}
 	}
 
-	roles, err := o.KubeClient.RbacV1().Roles(o.TeamNs).List(metav1.ListOptions{})
+	var roles, err = o.KubeClient.RbacV1().Roles(o.TeamNs).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	for _, role := range roles.Items {
-		tempRole := role
-		err = o.UpsertRole(&tempRole)
+	for idx := 0; idx < len(roles.Items); idx++ {
+		err = o.UpsertRole(&roles.Items[idx])
 		if err != nil {
 			return errors.Wrap(err, "upserting role")
 		}
@@ -116,9 +115,8 @@ func (o *RoleOptions) Run() error {
 	if err != nil {
 		return err
 	}
-	for _, env := range envList.Items {
-		tempEnv := env
-		err = o.upsertEnvironment(&tempEnv)
+	for idx := 0; idx < len(envList.Items); idx++ {
+		err = o.upsertEnvironment(&envList.Items[idx])
 		if err != nil {
 			return err
 		}
@@ -209,7 +207,7 @@ func (o *RoleOptions) WatchEnvironments() error {
 	select {}
 }
 
-func (o *RoleOptions) onEnvironment(oldObj interface{}, newObj interface{}) {
+func (o *RoleOptions) onEnvironment(oldObj, newObj interface{}) {
 	var newEnv *v1.Environment
 	if newObj != nil {
 		newEnv = newObj.(*v1.Environment)
@@ -349,7 +347,7 @@ func (o *RoleOptions) removeEnvironment(env *v1.Environment) {
 	}
 }
 
-func (o *RoleOptions) onEnvironmentRoleBinding(oldObj interface{}, newObj interface{}) {
+func (o *RoleOptions) onEnvironmentRoleBinding(oldObj, newObj interface{}) {
 	if o.EnvRoleBindings == nil {
 		o.EnvRoleBindings = map[string]*v1.EnvironmentRoleBinding{}
 	}
@@ -385,9 +383,9 @@ func (o *RoleOptions) UpsertEnvironmentRoleBinding(newEnv *v1.EnvironmentRoleBin
 	}
 
 	var errorMap []error
-	for _, env := range envList.Items {
-		tempEnv := env
-		err = o.upsertEnvironmentRoleBindingRolesInEnvironments(&tempEnv, newEnv, env.Spec.Namespace)
+	for idx := 0; idx < len(envList.Items); idx++ {
+		env := &envList.Items[idx]
+		err = o.upsertEnvironmentRoleBindingRolesInEnvironments(env, newEnv, env.Spec.Namespace)
 		if err != nil {
 			errorMap = append(errorMap, err)
 		}
@@ -395,7 +393,7 @@ func (o *RoleOptions) UpsertEnvironmentRoleBinding(newEnv *v1.EnvironmentRoleBin
 	return util.CombineErrors(errorMap...)
 }
 
-func (o *RoleOptions) onRole(oldObj interface{}, newObj interface{}) {
+func (o *RoleOptions) onRole(oldObj, newObj interface{}) {
 	if o.Roles == nil {
 		o.Roles = map[string]*rbacv1.Role{}
 	}
@@ -436,8 +434,8 @@ func (o *RoleOptions) UpsertRole(newRole *rbacv1.Role) error {
 	}
 
 	var errorMap []error
-	for _, env := range envList.Items {
-		err = o.upsertRoleInEnvironments(newRole, env.Spec.Namespace)
+	for idx := 0; idx < len(envList.Items); idx++ {
+		err = o.upsertRoleInEnvironments(newRole, envList.Items[idx].Spec.Namespace)
 		if err != nil {
 			errorMap = append(errorMap, err)
 		}
