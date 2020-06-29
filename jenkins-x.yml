@@ -108,8 +108,13 @@ pipelineConfig:
               - --cache-dir=/workspace
 
           - name: changelog
-            image: gcr.io/jenkinsxio/builder-go
-            command: ./changelog.sh
+            image: gcr.io/jenkinsxio/builder-jx
+            command: jx
+            args:
+              - step
+              - changelog
+              - --version
+              - v$VERSION
 
           - image: gcr.io/jenkinsxio/builder-go
             name: build-chart
