@@ -57,6 +57,14 @@ pipelineConfig:
               - preview
             dir: /workspace/source/charts/preview
 
+          - image: gcr.io/jenkinsxio/builder-go
+            name: build-chart
+            command: make
+            args:
+              - build
+            dir: /workspace/source/charts/jx-role-controller
+
+
     release:
       pipeline:
         agent:
