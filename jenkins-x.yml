@@ -33,11 +33,11 @@ pipelineConfig:
             command: ./hack/linter.sh
             image: golang:1.13.10
 
-          - name: build-scratch
+          - name: build-linux
             image: docker.io/golang:1.13.10
             command: make
             args:
-              - scratch
+              - linux
             dir: /workspace/source/
 
           - name: build-container-image
@@ -98,11 +98,11 @@ pipelineConfig:
             value: http://jenkins-x-athens-proxy
           steps:
 
-          - name: build-scratch
+          - name: build-linux
             image: docker.io/golang:1.13.10
             command: make
             args:
-              - scratch
+              - linux
             dir: /workspace/source/
 
           - name: build-container-image
