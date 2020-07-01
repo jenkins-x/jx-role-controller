@@ -1,5 +1,5 @@
 FROM scratch
 
-COPY ./build/jx-role-controller-linux-amd64 /jx-role-controller
+COPY ./build/jx-role-controller /jx-role-controller
 
 CMD ["/jx-role-controller"]
