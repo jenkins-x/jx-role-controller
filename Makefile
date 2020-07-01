@@ -42,8 +42,11 @@ coverage:
 cover:
 	$(GO) tool cover -func coverage.out | grep total
 
+scratch:
+	CGO_ENABLED=$(CGO_ENABLED) $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(NAME) main.go
+
 linux:
 	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(NAME)-linux-amd64 main.go
 
-docker: linux
+docker: scratch
 	docker build -t jenkins-x/$(NAME) .
