@@ -48,5 +48,5 @@ scratch:
 linux:
 	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 $(GO) build $(BUILDTAGS) $(BUILDFLAGS) -o build/$(NAME)-linux-amd64 main.go
 
-docker: scratch
+docker: linux
 	docker build -t jenkins-x/$(NAME) .
