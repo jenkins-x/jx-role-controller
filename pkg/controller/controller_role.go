@@ -120,7 +120,7 @@ func (o *RoleOptions) Run() error {
 }
 
 func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, deleteFunc func(obj interface{}), updateFunc func(oldObj, newObj interface{})) {
-	listWatch := cache.NewListWatchFromClient(o.KubeClient.RbacV1().RESTClient(), resource, o.TeamNs, fields.Everything())
+	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), resource, o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
 		listWatch,
@@ -135,6 +135,9 @@ func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, dele
 
 	stop := make(chan struct{})
 	go controller.Run(stop)
+
+	// Wait forever
+	select {}
 }
 
 func (o *RoleOptions) WatchRoles() {
