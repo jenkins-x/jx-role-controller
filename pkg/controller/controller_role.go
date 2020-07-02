@@ -43,7 +43,10 @@ type RoleOptions struct {
 const (
 	blankSting = ""
 	// expecting values: "true" || "yes"
-	watchEnvVar = "JX_CONTROLLER_NO_WATCH"
+	watchEnvVar             = "JX_CONTROLLER_NO_WATCH"
+	roles                   = "roles"
+	environments            = "environments"
+	environmentrolebindings = "environmentrolebindings"
 )
 
 func NewRoleController() (*RoleOptions, error) {
@@ -120,7 +123,11 @@ func (o *RoleOptions) Run() error {
 }
 
 func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, deleteFunc func(obj interface{}), updateFunc func(oldObj, newObj interface{})) {
-	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), resource, o.TeamNs, fields.Everything())
+	client := o.JxClient.JenkinsV1().RESTClient()
+	if resource == roles {
+		client = o.KubeClient.RbacV1().RESTClient()
+	}
+	listWatch := cache.NewListWatchFromClient(client, resource, o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
 		listWatch,
@@ -142,7 +149,7 @@ func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, dele
 
 func (o *RoleOptions) WatchRoles() {
 	role := &rbacv1.Role{}
-	o.watcher("roles", role,
+	o.watcher(roles, role,
 		func(obj interface{}) {
 			o.onRole(nil, obj)
 		},
@@ -157,7 +164,7 @@ func (o *RoleOptions) WatchRoles() {
 
 func (o *RoleOptions) WatchEnvironmentRoleBindings() {
 	environmentRoleBinding := &v1.EnvironmentRoleBinding{}
-	o.watcher("environmentrolebindings", environmentRoleBinding,
+	o.watcher(environmentrolebindings, environmentRoleBinding,
 		func(obj interface{}) {
 			o.onEnvironmentRoleBinding(nil, obj)
 		},
@@ -172,7 +179,7 @@ func (o *RoleOptions) WatchEnvironmentRoleBindings() {
 
 func (o *RoleOptions) WatchEnvironments() {
 	environment := &v1.Environment{}
-	o.watcher("environments", environment,
+	o.watcher(environments, environment,
 		func(obj interface{}) {
 			o.onEnvironment(nil, obj)
 		},
