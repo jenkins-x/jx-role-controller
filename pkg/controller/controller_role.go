@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"k8s.io/client-go/rest"
 
 	"github.com/jenkins-x/jx-role-controller/pkg/kube"
@@ -83,9 +81,9 @@ func NewRoleController() (*RoleOptions, error) {
 func (o *RoleOptions) Run() error {
 
 	if !o.NoWatch {
-		o.WatchRoles()
-		o.WatchEnvironmentRoleBindings()
-		o.WatchEnvironments()
+		o.watchRoles()
+		o.watchEnvironmentRoleBindings()
+		o.watchEnvironments()
 	}
 
 	var roles, err = o.KubeClient.RbacV1().Roles(o.TeamNs).List(metav1.ListOptions{})
@@ -122,77 +120,100 @@ func (o *RoleOptions) Run() error {
 	return nil
 }
 
-func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, deleteFunc func(obj interface{}), updateFunc func(oldObj, newObj interface{})) {
-	client := o.JxClient.JenkinsV1().RESTClient()
-	if resource == roles {
-		client = o.KubeClient.RbacV1().RESTClient()
-	}
-	log.Logger().Infof("starting watcher for %s resource", resource)
-	listWatch := cache.NewListWatchFromClient(client, resource, o.TeamNs, fields.Everything())
+//nolint:dupl
+func (o *RoleOptions) watchRoles() {
+	role := &rbacv1.Role{}
+	log.Logger().Infof("starting watcher for %s resource", roles)
+	listWatch := cache.NewListWatchFromClient(o.KubeClient.RbacV1().RESTClient(), roles, o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
 		listWatch,
-		obj,
+		role,
 		time.Minute*10,
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    addFunc,
-			UpdateFunc: updateFunc,
-			DeleteFunc: deleteFunc,
+			AddFunc: func(obj interface{}) {
+				o.onRole(nil, obj)
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				o.onRole(oldObj, newObj)
+			},
+			DeleteFunc: func(obj interface{}) {
+				o.onRole(obj, nil)
+			},
 		},
 	)
 
 	stop := make(chan struct{})
 
-	log.Logger().Infof("starting controller for %s watcher", resource)
+	log.Logger().Infof("starting controller for %s watcher", roles)
 	go controller.Run(stop)
 
 	// Wait forever
 	select {}
 }
 
-func (o *RoleOptions) WatchRoles() {
-	role := &rbacv1.Role{}
-	o.watcher(roles, role,
-		func(obj interface{}) {
-			o.onRole(nil, obj)
-		},
-		func(obj interface{}) {
-			o.onRole(obj, nil)
-		},
-		func(oldObj, newObj interface{}) {
-			o.onRole(oldObj, newObj)
-		},
-	)
-}
-
-func (o *RoleOptions) WatchEnvironmentRoleBindings() {
+//nolint:dupl
+func (o *RoleOptions) watchEnvironmentRoleBindings() {
 	environmentRoleBinding := &v1.EnvironmentRoleBinding{}
-	o.watcher(environmentrolebindings, environmentRoleBinding,
-		func(obj interface{}) {
-			o.onEnvironmentRoleBinding(nil, obj)
-		},
-		func(obj interface{}) {
-			o.onEnvironmentRoleBinding(obj, nil)
-		},
-		func(oldObj, newObj interface{}) {
-			o.onEnvironmentRoleBinding(oldObj, newObj)
+	log.Logger().Infof("starting watcher for %s resource", environmentrolebindings)
+	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), environmentrolebindings, o.TeamNs, fields.Everything())
+	kube.SortListWatchByName(listWatch)
+	_, controller := cache.NewInformer(
+		listWatch,
+		environmentRoleBinding,
+		time.Minute*10,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				o.onEnvironmentRoleBinding(nil, obj)
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				o.onEnvironmentRoleBinding(oldObj, newObj)
+			},
+			DeleteFunc: func(obj interface{}) {
+				o.onEnvironmentRoleBinding(obj, nil)
+			},
 		},
 	)
+
+	stop := make(chan struct{})
+
+	log.Logger().Infof("starting controller for %s watcher", environmentrolebindings)
+	go controller.Run(stop)
+
+	// Wait forever
+	select {}
 }
 
-func (o *RoleOptions) WatchEnvironments() {
+//nolint:dupl
+func (o *RoleOptions) watchEnvironments() {
 	environment := &v1.Environment{}
-	o.watcher(environments, environment,
-		func(obj interface{}) {
-			o.onEnvironment(nil, obj)
-		},
-		func(obj interface{}) {
-			o.onEnvironment(obj, nil)
-		},
-		func(oldObj, newObj interface{}) {
-			o.onEnvironment(oldObj, newObj)
+	log.Logger().Infof("starting watcher for %s resource", environments)
+	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), environments, o.TeamNs, fields.Everything())
+	kube.SortListWatchByName(listWatch)
+	_, controller := cache.NewInformer(
+		listWatch,
+		environment,
+		time.Minute*10,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				o.onEnvironment(nil, obj)
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				o.onEnvironment(oldObj, newObj)
+			},
+			DeleteFunc: func(obj interface{}) {
+				o.onEnvironment(obj, nil)
+			},
 		},
 	)
+
+	stop := make(chan struct{})
+
+	log.Logger().Infof("starting controller for %s watcher", environments)
+	go controller.Run(stop)
+
+	// Wait forever
+	select {}
 }
 
 func (o *RoleOptions) onEnvironment(oldObj, newObj interface{}) {
