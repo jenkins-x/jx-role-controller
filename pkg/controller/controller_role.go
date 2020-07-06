@@ -147,9 +147,6 @@ func (o *RoleOptions) watchRoles() {
 
 	log.Logger().Infof("starting controller for %s watcher", roles)
 	go controller.Run(stop)
-
-	// Wait forever
-	select {}
 }
 
 //nolint:dupl
@@ -179,9 +176,6 @@ func (o *RoleOptions) watchEnvironmentRoleBindings() {
 
 	log.Logger().Infof("starting controller for %s watcher", environmentrolebindings)
 	go controller.Run(stop)
-
-	// Wait forever
-	select {}
 }
 
 //nolint:dupl
