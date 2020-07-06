@@ -127,6 +127,7 @@ func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, dele
 	if resource == roles {
 		client = o.KubeClient.RbacV1().RESTClient()
 	}
+	log.Logger().Infof("starting watcher for %s resource", resource)
 	listWatch := cache.NewListWatchFromClient(client, resource, o.TeamNs, fields.Everything())
 	kube.SortListWatchByName(listWatch)
 	_, controller := cache.NewInformer(
@@ -141,6 +142,8 @@ func (o *RoleOptions) watcher(resource string, obj runtime.Object, addFunc, dele
 	)
 
 	stop := make(chan struct{})
+
+	log.Logger().Infof("starting controller for %s watcher", resource)
 	go controller.Run(stop)
 
 	// Wait forever
@@ -201,7 +204,7 @@ func (o *RoleOptions) onEnvironment(oldObj, newObj interface{}) {
 		oldEnv := oldObj.(*v1.Environment)
 		if oldEnv != nil {
 			if newEnv == nil || newEnv.Spec.Namespace != oldEnv.Spec.Namespace {
-				o.removeEnvironment(oldEnv)
+				o.removeEnvironmentRoleBinding(oldEnv)
 			}
 		}
 	}
@@ -214,6 +217,7 @@ func (o *RoleOptions) onEnvironment(oldObj, newObj interface{}) {
 }
 
 func (o *RoleOptions) upsertEnvironment(env *v1.Environment) error {
+	log.Logger().Infof("upserting environment %s", env.Name)
 	var errorMap []error
 	ns := env.Spec.Namespace
 	if ns != "" {
@@ -230,6 +234,7 @@ func (o *RoleOptions) upsertEnvironment(env *v1.Environment) error {
 
 // upsertEnvironmentRoleBindingRolesInEnvironments for the given environment and environment role binding lets update any role or role bindings if required
 func (o *RoleOptions) upsertEnvironmentRoleBindingRolesInEnvironments(env *v1.Environment, binding *v1.EnvironmentRoleBinding, ns string) error {
+	log.Logger().Infof("upserting environment role binding roles in environments in %s namespace", ns)
 	var errorMap []error
 	if kube.EnvironmentMatchesAny(env, binding.Spec.Environments) {
 		var err error
@@ -293,6 +298,7 @@ func (o *RoleOptions) upsertEnvironmentRoleBindingRolesInEnvironments(env *v1.En
 
 func (o *RoleOptions) updateOrCreateRole(roles kv1.RoleInterface, role *rbacv1.Role, roleName, namespace string) error {
 	oldRole, err := roles.Get(roleName, metav1.GetOptions{})
+	log.Logger().Infof("updating or creating role %s in namespace %s", roleName, namespace)
 	if err == nil && oldRole != nil {
 		// lets update it
 		changed := false
@@ -321,7 +327,8 @@ func (o *RoleOptions) updateOrCreateRole(roles kv1.RoleInterface, role *rbacv1.R
 	return err
 }
 
-func (o *RoleOptions) removeEnvironment(env *v1.Environment) {
+func (o *RoleOptions) removeEnvironmentRoleBinding(env *v1.Environment) {
+	log.Logger().Infof("removing environment role binding for %s", env.Name)
 	ns := env.Spec.Namespace
 	if ns != "" {
 		for _, binding := range o.EnvRoleBindings {
@@ -357,6 +364,7 @@ func (o *RoleOptions) onEnvironmentRoleBinding(oldObj, newObj interface{}) {
 // UpsertEnvironmentRoleBinding processes an insert/update of the EnvironmentRoleBinding resource
 // its public so that we can make testing easier
 func (o *RoleOptions) UpsertEnvironmentRoleBinding(newEnv *v1.EnvironmentRoleBinding) error {
+	log.Logger().Info("upserting environment role binding")
 	if newEnv != nil {
 		if o.EnvRoleBindings == nil {
 			o.EnvRoleBindings = map[string]*v1.EnvironmentRoleBinding{}
@@ -403,6 +411,7 @@ func (o *RoleOptions) onRole(oldObj, newObj interface{}) {
 // UpsertRole processes the insert/update of a Role
 // this function is public for easier testing
 func (o *RoleOptions) UpsertRole(newRole *rbacv1.Role) error {
+	log.Logger().Info("upserting role")
 	if newRole == nil {
 		return nil
 	}
@@ -433,6 +442,7 @@ func (o *RoleOptions) UpsertRole(newRole *rbacv1.Role) error {
 
 // upsertRoleInEnvironments updates the Role in the team environment in the other environment namespaces if it has changed
 func (o *RoleOptions) upsertRoleInEnvironments(role *rbacv1.Role, ns string) error {
+	log.Logger().Infof("upserting role into environment for %s in %s namespace", role.Name, ns)
 	if ns == o.TeamNs {
 		return nil
 	}
@@ -443,6 +453,7 @@ func (o *RoleOptions) upsertRoleInEnvironments(role *rbacv1.Role, ns string) err
 }
 
 func (o *RoleOptions) upsertRoleIntoEnvRole() {
+	log.Logger().Info("upserting role into environment role")
 	foundRole := 0
 	for _, roleValue := range o.Roles {
 		for labelK, labelV := range roleValue.Labels {
