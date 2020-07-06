@@ -5,7 +5,10 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/jenkins-x/jx-role-controller/pkg/kube"
 	"github.com/jenkins-x/jx-role-controller/pkg/util"
@@ -22,8 +25,6 @@ import (
 	"github.com/jenkins-x/jx-kube-client/pkg/kubeclient"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/tools/cache"
 )
 
 // RoleOptions the command line options
@@ -120,94 +121,79 @@ func (o *RoleOptions) Run() error {
 	return nil
 }
 
-//nolint:dupl
+func (o *RoleOptions) watcher(resource string, obj runtime.Object, wait bool, addFunc, deleteFunc func(obj interface{}), updateFunc func(oldObj, newObj interface{})) {
+	client := o.JxClient.JenkinsV1().RESTClient()
+	if resource == roles {
+		client = o.KubeClient.RbacV1().RESTClient()
+	}
+	log.Logger().Infof("starting watcher for %s resource", resource)
+	listWatch := cache.NewListWatchFromClient(client, resource, o.TeamNs, fields.Everything())
+	kube.SortListWatchByName(listWatch)
+	_, controller := cache.NewInformer(
+		listWatch,
+		obj,
+		time.Minute*10,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    addFunc,
+			UpdateFunc: updateFunc,
+			DeleteFunc: deleteFunc,
+		},
+	)
+
+	stop := make(chan struct{})
+
+	log.Logger().Infof("starting controller for %s watcher", resource)
+	go controller.Run(stop)
+
+	if wait {
+		// Wait forever
+		select {}
+	}
+}
+
 func (o *RoleOptions) watchRoles() {
 	role := &rbacv1.Role{}
-	log.Logger().Infof("starting watcher for %s resource", roles)
-	listWatch := cache.NewListWatchFromClient(o.KubeClient.RbacV1().RESTClient(), roles, o.TeamNs, fields.Everything())
-	kube.SortListWatchByName(listWatch)
-	_, controller := cache.NewInformer(
-		listWatch,
-		role,
-		time.Minute*10,
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				o.onRole(nil, obj)
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				o.onRole(oldObj, newObj)
-			},
-			DeleteFunc: func(obj interface{}) {
-				o.onRole(obj, nil)
-			},
+	o.watcher(roles, role, false,
+		func(obj interface{}) {
+			o.onRole(nil, obj)
+		},
+		func(obj interface{}) {
+			o.onRole(obj, nil)
+		},
+		func(oldObj, newObj interface{}) {
+			o.onRole(oldObj, newObj)
 		},
 	)
-
-	stop := make(chan struct{})
-
-	log.Logger().Infof("starting controller for %s watcher", roles)
-	go controller.Run(stop)
 }
 
-//nolint:dupl
 func (o *RoleOptions) watchEnvironmentRoleBindings() {
 	environmentRoleBinding := &v1.EnvironmentRoleBinding{}
-	log.Logger().Infof("starting watcher for %s resource", environmentrolebindings)
-	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), environmentrolebindings, o.TeamNs, fields.Everything())
-	kube.SortListWatchByName(listWatch)
-	_, controller := cache.NewInformer(
-		listWatch,
-		environmentRoleBinding,
-		time.Minute*10,
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				o.onEnvironmentRoleBinding(nil, obj)
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				o.onEnvironmentRoleBinding(oldObj, newObj)
-			},
-			DeleteFunc: func(obj interface{}) {
-				o.onEnvironmentRoleBinding(obj, nil)
-			},
+	o.watcher(environmentrolebindings, environmentRoleBinding, false,
+		func(obj interface{}) {
+			o.onEnvironmentRoleBinding(nil, obj)
+		},
+		func(obj interface{}) {
+			o.onEnvironmentRoleBinding(obj, nil)
+		},
+		func(oldObj, newObj interface{}) {
+			o.onEnvironmentRoleBinding(oldObj, newObj)
 		},
 	)
-
-	stop := make(chan struct{})
-
-	log.Logger().Infof("starting controller for %s watcher", environmentrolebindings)
-	go controller.Run(stop)
 }
 
-//nolint:dupl
 func (o *RoleOptions) watchEnvironments() {
 	environment := &v1.Environment{}
-	log.Logger().Infof("starting watcher for %s resource", environments)
-	listWatch := cache.NewListWatchFromClient(o.JxClient.JenkinsV1().RESTClient(), environments, o.TeamNs, fields.Everything())
-	kube.SortListWatchByName(listWatch)
-	_, controller := cache.NewInformer(
-		listWatch,
-		environment,
-		time.Minute*10,
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				o.onEnvironment(nil, obj)
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				o.onEnvironment(oldObj, newObj)
-			},
-			DeleteFunc: func(obj interface{}) {
-				o.onEnvironment(obj, nil)
-			},
+	o.watcher(environments, environment, true,
+		func(obj interface{}) {
+			o.onEnvironment(nil, obj)
+		},
+		func(obj interface{}) {
+			o.onEnvironment(obj, nil)
+		},
+		func(oldObj, newObj interface{}) {
+			o.onEnvironment(oldObj, newObj)
 		},
 	)
-
-	stop := make(chan struct{})
-
-	log.Logger().Infof("starting controller for %s watcher", environments)
-	go controller.Run(stop)
-
-	// Wait forever
-	select {}
 }
 
 func (o *RoleOptions) onEnvironment(oldObj, newObj interface{}) {
