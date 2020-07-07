@@ -29,3 +29,5 @@ env
 ```
 
 Part of Jenkins X shared components.
+
+For more information on configuring logging file, formats and levels see the [Jenkins X logging](https://github.com/jenkins-x/jx-logging) component.
